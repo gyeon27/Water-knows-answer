@@ -1,0 +1,11 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.claude/
+
+# Generated simulation output and local UI state
+fluid_routing/fluid_routing_log.csv
+fluid_routing/fluid_routing_summary.json
+fluid_routing/imgui.ini
+
