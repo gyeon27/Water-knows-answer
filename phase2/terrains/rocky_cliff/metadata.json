@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "spec": {
+    "name": "rocky_cliff",
+    "world_width_m": 24.0,
+    "world_length_m": 32.0,
+    "lower_height_m": 0.8,
+    "cliff_height_m": 7.0,
+    "cliff_z_fraction": 0.56,
+    "transition_width_fraction": 0.018,
+    "river_width_m": 4.0,
+    "river_depth_m": 0.45,
+    "upstream_slope": 0.018,
+    "lower_slope": 0.006,
+    "roughness_m": 0.08,
+    "source_flow_rate_m3s": 1.2,
+    "seed": 20260811
+  },
+  "resolution": [
+    257,
+    257
+  ],
+  "axis_convention": {
+    "array_rows": "+z downstream",
+    "array_columns": "+x right",
+    "height": "+y up"
+  },
+  "cell_size_m": [
+    0.09375,
+    0.125
+  ],
+  "height_encoding": {
+    "file": "height_u16.png",
+    "minimum_m": 0.736830472946167,
+    "maximum_m": 8.189776420593262,
+    "decode": "minimum_m + pixel/65535 * (maximum_m-minimum_m)"
+  },
+  "water_source": {
+    "mask": "source_mask.png",
+    "flow_rate_m3s": 1.2,
+    "initial_velocity_mps": [
+      0.0,
+      0.0,
+      1.2
+    ]
+  },
+  "derived_fields": {
+    "normal": "surface_normal.npy",
+    "slope": "slope.npy",
+    "cliff_mask": "cliff_mask.png",
+    "channel_mask": "channel_mask.png"
+  },
+  "routing_thresholds": {
+    "cliff_slope_gradient": 0.75
+  }
+}

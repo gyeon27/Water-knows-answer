@@ -1,0 +1,20 @@
+{
+  "terrain": "single_cliff",
+  "seconds": 11.999999999999963,
+  "initial_volume_m3": 1.9125,
+  "final_volume_m3": 10.35770033824371,
+  "injected_volume_m3": 14.40000000000002,
+  "waterfall_volume_m3": 5.883615316575222,
+  "boundary_volume_m3": 0.0,
+  "mass_balance_error_m3": -0.07118434518108963,
+  "flux_schema": [
+    "time_s",
+    "x_m",
+    "y_m",
+    "z_m",
+    "discharge_m3s",
+    "vx_mps",
+    "vy_mps",
+    "vz_mps"
+  ]
+}

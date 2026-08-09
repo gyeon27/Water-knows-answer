@@ -1,0 +1,8 @@
+{
+  "steps": 300,
+  "available_graphs": 111,
+  "training_mode": "fixed_graph_overfit",
+  "initial_loss": 0.0594610869884491,
+  "final_loss": 1.8400504586679745e-06,
+  "loss_ratio": 3.0945456127053685e-05
+}

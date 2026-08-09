@@ -19,6 +19,7 @@ from features import Features
 from routing import Router
 from blending import Blender
 from logging_utils import Logger
+from terrain import WaterfallTerrain
 from solvers.stream_solver import StreamSolver
 from solvers.pool_solver import PoolSolver
 from solvers.splash_solver import SplashSolver
@@ -28,10 +29,11 @@ from solvers.splash_solver import SplashSolver
 class Renderer:
     """입자 색상 계산만 담당 (상태별 색 + 깜빡임 의심 셀 하이라이트)."""
 
-    def __init__(self, particles, grid, router):
+    def __init__(self, particles, grid, router, terrain=None):
         self.particles = particles
         self.grid = grid
         self.router = router
+        self.terrain = terrain
         self.colors = ti.Vector.field(3, dtype=ti.f32, shape=particles.n)
 
     @ti.kernel
@@ -55,6 +57,7 @@ def parse_args():
     parser.add_argument("--max-frames", type=int, default=0, help="N프레임 후 종료 (0=계속 실행)")
     parser.add_argument("--arch", choices=["cpu", "gpu", "vulkan"], default="gpu")
     parser.add_argument("--n-particles", type=int, default=cfg.N_PARTICLES)
+    parser.add_argument("--scene", choices=["column", "waterfall"], default="waterfall")
     return parser.parse_args()
 
 
@@ -72,6 +75,7 @@ def main():
     ti.init(arch=arch_map[args.arch])
 
     particles = Particles(n=args.n_particles)
+    terrain = WaterfallTerrain() if args.scene == "waterfall" else None
     grid = Grid(particles)
     features = Features(grid, particles)
     router = Router(grid, features)
@@ -80,10 +84,13 @@ def main():
     splash_solver = SplashSolver(grid, particles, router)
     blender = Blender(grid, particles, router, stream_solver, pool_solver, splash_solver)
     logger = Logger()
-    renderer = Renderer(particles, grid, router)
+    renderer = Renderer(particles, grid, router, terrain)
 
     def reset_sim():
-        particles.init_water_column()
+        if args.scene == "waterfall":
+            particles.init_waterfall_stream()
+        else:
+            particles.init_water_column()
         router.init_states()
         features.init_buffers()
         pool_solver.init_buffers()
@@ -107,6 +114,13 @@ def main():
         scene.set_camera(camera)
         scene.ambient_light((0.6, 0.6, 0.6))
         scene.point_light(pos=(4, 8, 4), color=(1, 1, 1))
+        if renderer.terrain is not None:
+            scene.mesh(
+                renderer.terrain.vertices,
+                indices=renderer.terrain.indices,
+                per_vertex_color=renderer.terrain.colors,
+                two_sided=True,
+            )
         scene.particles(particles.position, radius=0.035, per_vertex_color=renderer.colors)
         canvas.scene(scene)
         gui = window.get_gui()
@@ -160,6 +174,8 @@ def main():
             splash_solver.step(cfg.DT, frame)
             # 5) 경계 블렌딩으로 최종 위치/속도 확정
             blender.commit(frame)
+            if terrain is not None:
+                terrain.collide(particles)
             particles.enforce_bounds()
 
             frame_time_ms = (time.perf_counter() - t0) * 1000.0

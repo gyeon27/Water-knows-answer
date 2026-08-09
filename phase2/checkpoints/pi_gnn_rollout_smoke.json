@@ -1,0 +1,43 @@
+{
+  "best_validation_rmse_mps": 1.5797812434923744,
+  "steps": 2,
+  "elapsed_s": 1.2184523999985686,
+  "history": [
+    {
+      "step": 1,
+      "loss": 1.935795545578003,
+      "rollout_horizon": 8,
+      "rollout_loss": 1.1165568828582764,
+      "supervised": 1.5653315782546997,
+      "penetration": 0.0008877946529537439,
+      "momentum": 0.22501477599143982,
+      "density": 0.00033774369512684643,
+      "energy": 1.5993651151657104,
+      "rmse_mps": 1.5797812434923744,
+      "val_supervised": 2.8095971125623453,
+      "val_penetration": 0.0013176345499469671,
+      "val_momentum": 0.06895591649631767,
+      "val_density": 0.0031844648793871192,
+      "val_energy": 5.068768946372944,
+      "gpu_memory_mb": 41.81298828125
+    },
+    {
+      "step": 2,
+      "loss": 2.8624911308288574,
+      "rollout_horizon": 32,
+      "rollout_loss": 2.2086386680603027,
+      "supervised": 2.140369176864624,
+      "penetration": 0.001262736157514155,
+      "momentum": 0.12742900848388672,
+      "density": 0.00011671643005684018,
+      "energy": 3.269176959991455,
+      "rmse_mps": 1.5799091374279381,
+      "val_supervised": 2.8109848045784496,
+      "val_penetration": 0.0013257754471060648,
+      "val_momentum": 0.0685533308626517,
+      "val_density": 0.003184410024677282,
+      "val_energy": 5.079834563414687,
+      "gpu_memory_mb": 47.57568359375
+    }
+  ]
+}

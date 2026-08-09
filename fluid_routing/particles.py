@@ -62,6 +62,37 @@ class Particles:
             self.cell_index[i] = ti.Vector([0, 0, 0])
 
     @ti.kernel
+    def init_waterfall_stream(self):
+        """Place a moving shallow stream on the upper waterfall plateau."""
+        x_min = cfg.WATERFALL_CHANNEL_CENTER_X - cfg.WATERFALL_CHANNEL_HALF_WIDTH
+        x_size = 2.0 * cfg.WATERFALL_CHANNEL_HALF_WIDTH
+        z_min = cfg.WATERFALL_SOURCE_Z_MIN
+        z_size = cfg.WATERFALL_SOURCE_Z_MAX - cfg.WATERFALL_SOURCE_Z_MIN
+        depth = cfg.WATERFALL_WATER_DEPTH
+        volume = x_size * z_size * depth
+        spacing = ti.pow(volume / self.n, 1.0 / 3.0)
+        nx = ti.max(1, ti.cast(ti.ceil(x_size / spacing), ti.i32))
+        ny = ti.max(1, ti.cast(ti.ceil(depth / spacing), ti.i32))
+        nz = ti.max(1, ti.cast(ti.ceil(z_size / spacing), ti.i32))
+        for i in range(self.n):
+            ix = i % nx
+            iz = (i // nx) % nz
+            iy = (i // (nx * nz)) % ny
+            fx = (ti.cast(ix, ti.f32) + 0.5) / nx
+            fy = (ti.cast(iy, ti.f32) + 0.5) / ny
+            fz = (ti.cast(iz, ti.f32) + 0.5) / nz
+            jitter = (ti.Vector([ti.random(), ti.random(), ti.random()]) - 0.5) * spacing * 0.25
+            self.position[i] = ti.Vector([
+                x_min + fx * x_size,
+                cfg.WATERFALL_UPPER_Y + 0.04 + fy * depth,
+                z_min + fz * z_size,
+            ]) + jitter
+            self.velocity[i] = ti.Vector([0.0, 0.0, cfg.WATERFALL_SOURCE_SPEED])
+            self.mass[i] = 1.0
+            self.state[i] = cfg.STATE_STREAM
+            self.cell_index[i] = ti.Vector([0, 0, 0])
+
+    @ti.kernel
     def enforce_bounds(self):
         """도메인 경계를 벗어난 입자를 감쇠 반발시켜 안쪽으로 되돌린다."""
         lo = ti.Vector(cfg.DOMAIN_MIN)

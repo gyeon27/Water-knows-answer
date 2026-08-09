@@ -1,0 +1,23 @@
+{
+  "baseline_gns": {
+    "rmse_m": 2.255044460296631,
+    "penetration_rate": 0.0,
+    "density_error": 0.2969120144844055,
+    "momentum_error_mps": 0.8300936818122864,
+    "energy_excess": 4.327064514160156
+  },
+  "pi_gnn": {
+    "rmse_m": 1.988706350326538,
+    "penetration_rate": 0.0,
+    "density_error": 0.25062334537506104,
+    "momentum_error_mps": 0.3959129750728607,
+    "energy_excess": 6.6585235595703125
+  },
+  "improvement": {
+    "rmse_m": 0.2663381099700928,
+    "penetration_rate": 0.0,
+    "density_error": 0.04628866910934448,
+    "momentum_error_mps": 0.43418070673942566,
+    "energy_excess": -2.3314590454101562
+  }
+}

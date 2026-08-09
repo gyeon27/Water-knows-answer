@@ -1,0 +1,80 @@
+{
+  "device": "cpu",
+  "files": [
+    "trajectory_000_single_cliff.npz",
+    "trajectory_001_natural_waterfall.npz"
+  ],
+  "train_graphs": 176,
+  "validation_graphs": 42,
+  "steps": 1000,
+  "best_validation_rmse_mps": 1.3356340896928023,
+  "elapsed_s": 12.058270900000934,
+  "history": [
+    {
+      "step": 1,
+      "train_loss": 0.16587840020656586,
+      "rmse_mps": 2.090121809941484,
+      "components": 35238
+    },
+    {
+      "step": 100,
+      "train_loss": 0.010728433728218079,
+      "rmse_mps": 1.9053797717214214,
+      "components": 35238
+    },
+    {
+      "step": 200,
+      "train_loss": 0.10032693296670914,
+      "rmse_mps": 1.7579774627838363,
+      "components": 35238
+    },
+    {
+      "step": 300,
+      "train_loss": 2.622323989868164,
+      "rmse_mps": 1.6745673639344691,
+      "components": 35238
+    },
+    {
+      "step": 400,
+      "train_loss": 0.7930520176887512,
+      "rmse_mps": 1.5896934523222594,
+      "components": 35238
+    },
+    {
+      "step": 500,
+      "train_loss": 0.5417813062667847,
+      "rmse_mps": 1.4429181530812094,
+      "components": 35238
+    },
+    {
+      "step": 600,
+      "train_loss": 0.015515223145484924,
+      "rmse_mps": 1.4510580389812318,
+      "components": 35238
+    },
+    {
+      "step": 700,
+      "train_loss": 0.00597398029640317,
+      "rmse_mps": 1.408106486553238,
+      "components": 35238
+    },
+    {
+      "step": 800,
+      "train_loss": 0.15626323223114014,
+      "rmse_mps": 1.4001501133976937,
+      "components": 35238
+    },
+    {
+      "step": 900,
+      "train_loss": 0.18640431761741638,
+      "rmse_mps": 1.3854739935875997,
+      "components": 35238
+    },
+    {
+      "step": 1000,
+      "train_loss": 0.1659671515226364,
+      "rmse_mps": 1.3356340896928023,
+      "components": 35238
+    }
+  ]
+}
