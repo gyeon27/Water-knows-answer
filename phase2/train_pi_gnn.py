@@ -43,12 +43,41 @@ def load_samples(files: list[Path], terrain_root: Path):
 
 
 def curriculum_horizon(step: int, total: int) -> int:
+    """Reach the hardest (horizon=32) stage by 60% of training, not 80%.
+
+    The cosine LR schedule means learning rate is nearly exhausted by the
+    last 20% of steps. Under the old .2/.4/.6/.8 breakpoints, horizon=32
+    only got the final 20% of steps to work with, almost all of it at
+    near-zero LR — the model never had a real chance to adapt to the
+    hardest curriculum stage. Moving the breakpoints earlier leaves 40% of
+    training (with the newly-raised eta_min) at the full horizon.
+    """
     fraction = step / max(total, 1)
-    return 1 if fraction < .2 else 4 if fraction < .4 else 8 if fraction < .6 else 16 if fraction < .8 else 32
+    return 1 if fraction < .15 else 4 if fraction < .3 else 8 if fraction < .45 else 16 if fraction < .6 else 32
 
 
-def truncated_rollout_loss(model, sequence, normalization, device):
-    """Velocity-feedback rollout; topology is rebuilt from each teacher frame."""
+def teacher_forcing_probability(step: int, total: int, floor: float = 0.05) -> float:
+    """Linear decay from 1.0 (always feed the ground-truth velocity) to `floor`.
+
+    Pure free-running feedback (the old behaviour) forces the model to eat its
+    own error from step 1 of every truncated rollout, which is exactly what let
+    splash predictions collapse over the rollout horizon (see notes in
+    phase2/gnn_training_plan.md). Scheduled sampling exposes the model to a
+    growing share of its own predictions gradually instead of all at once.
+    """
+    fraction = step / max(total, 1)
+    return max(floor, 1.0 - fraction)
+
+
+def truncated_rollout_loss(model, sequence, normalization, device, teacher_forcing_prob: float = 0.0):
+    """Velocity-feedback rollout; topology is rebuilt from each teacher frame.
+
+    At every step after the first, each particle's incoming velocity is the
+    ground-truth value with probability `teacher_forcing_prob`, otherwise the
+    model's own previous prediction. Sampling per particle (rather than per
+    batch) means every rollout mixes teacher-forced and free-running
+    particles, so the model can't rely on ever having a fully clean input.
+    """
     previous_ids, previous_velocity = None, None
     losses = []
     for sample in sequence:
@@ -57,7 +86,13 @@ def truncated_rollout_loss(model, sequence, normalization, device):
         if previous_ids is not None:
             common, previous_index, current_index = np.intersect1d(previous_ids, sample.particle_id, return_indices=True)
             if common.size:
-                raw_node[torch.as_tensor(current_index, device=device), 15:18] = previous_velocity[torch.as_tensor(previous_index, device=device)]
+                current_index_t = torch.as_tensor(current_index, device=device)
+                previous_index_t = torch.as_tensor(previous_index, device=device)
+                feedback_v = previous_velocity[previous_index_t]
+                if teacher_forcing_prob > 0.0:
+                    keep_teacher = torch.rand(common.size, device=device) < teacher_forcing_prob
+                    feedback_v = torch.where(keep_teacher.unsqueeze(1), raw_node[current_index_t, 15:18], feedback_v)
+                raw_node[current_index_t, 15:18] = feedback_v
         node = (raw_node - normalization["node_mean"]) / normalization["node_std"]
         edge = batch["edge_features"]
         if edge.numel():
@@ -128,6 +163,8 @@ def main() -> None:
     parser.add_argument("--lr", type=float, default=2e-4)
     parser.add_argument("--validate-every", type=int, default=250)
     parser.add_argument("--rollout-every", type=int, default=50)
+    parser.add_argument("--rollout-weight", type=float, default=0.25, help="weight of the truncated-rollout loss term added to the base per-frame loss")
+    parser.add_argument("--teacher-forcing-floor", type=float, default=0.05, help="minimum probability of feeding ground-truth velocity during truncated rollouts, reached at the final step")
     parser.add_argument("--resume", type=Path)
     parser.add_argument("--output", type=Path, default=root / "checkpoints" / "pi_gnn_best.pt")
     args = parser.parse_args()
@@ -154,7 +191,10 @@ def main() -> None:
     first = train_samples[0]
     model = ResidualGNS(first.node_features.shape[1], first.edge_features.shape[1], args.hidden, args.blocks).to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=1e-6)
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.steps, eta_min=args.lr * 0.05)
+    # eta_min raised from 0.05*lr: at 0.05 the LR was nearly zero by the time
+    # the rollout curriculum reached horizon=32 (see curriculum_horizon), so
+    # the model had no real capacity left to adapt to the hardest stage.
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.steps, eta_min=args.lr * 0.25)
     scaler = torch.amp.GradScaler("cuda")
     start_step, best_rmse, history = 0, float("inf"), []
     if args.resume:
@@ -184,14 +224,15 @@ def main() -> None:
         losses = physics_losses(prediction, batch["target_delta_v"], batch)
         loss = sum(WEIGHTS[name] * losses[name] for name in WEIGHTS)
         rollout_horizon = curriculum_horizon(step, args.steps)
+        teacher_forcing_prob = teacher_forcing_probability(step, args.steps, args.teacher_forcing_floor)
         rollout_value = prediction.sum() * 0.0
         if rollout_horizon > 1 and step % args.rollout_every == 0:
             candidates = [group for group in train_groups if len(group) >= rollout_horizon]
             group = random.choice(candidates)
             start = random.randrange(len(group) - rollout_horizon + 1)
             sequence = group[start : start + rollout_horizon]
-            rollout_value = truncated_rollout_loss(model, sequence, normalization, device)
-            loss = loss + 0.25 * rollout_value
+            rollout_value = truncated_rollout_loss(model, sequence, normalization, device, teacher_forcing_prob)
+            loss = loss + args.rollout_weight * rollout_value
         if not torch.isfinite(loss):
             raise FloatingPointError(f"non-finite loss at step {step}")
         scaler.scale(loss).backward()
@@ -204,7 +245,7 @@ def main() -> None:
             scheduler.step()
         if step == 1 or step % args.validate_every == 0 or step == args.steps:
             metrics = validate(model, validation_samples, normalization, device, args.max_nodes, args.max_edges)
-            record = {"step": step, "loss": float(loss.detach()), "rollout_horizon": rollout_horizon, "rollout_loss": float(rollout_value.detach()), **{name: float(value.detach()) for name, value in losses.items()}, **metrics, "gpu_memory_mb": torch.cuda.max_memory_allocated() / 1048576}
+            record = {"step": step, "loss": float(loss.detach()), "rollout_horizon": rollout_horizon, "teacher_forcing_prob": teacher_forcing_prob, "rollout_loss": float(rollout_value.detach()), **{name: float(value.detach()) for name, value in losses.items()}, **metrics, "gpu_memory_mb": torch.cuda.max_memory_allocated() / 1048576}
             history.append(record)
             print(json.dumps(record, ensure_ascii=False))
             state = {
@@ -213,7 +254,8 @@ def main() -> None:
                 "edge_size": first.edge_features.shape[1], "hidden_size": args.hidden, "blocks": args.blocks,
                 "normalization": {name: value.detach().cpu().numpy() for name, value in normalization.items()},
                 "train_files": [str(path) for path in train_files], "validation_files": [str(path) for path in validation_files], "test_files": [str(path) for path in test_files],
-                "device": torch.cuda.get_device_name(0), "weights": WEIGHTS,
+                "device": torch.cuda.get_device_name(0), "weights": WEIGHTS, "teacher_forcing_floor": args.teacher_forcing_floor,
+                "rollout_every": args.rollout_every, "rollout_weight": args.rollout_weight,
             }
             torch.save(state, args.output.with_name("pi_gnn_latest.pt"))
             if metrics["rmse_mps"] < best_rmse:
