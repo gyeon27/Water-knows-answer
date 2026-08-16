@@ -1,0 +1,71 @@
+{
+  "format": "ONNX",
+  "opset": 18,
+  "model": "ours_full_graph.onnx",
+  "sha256": "d0cc67f1c10c19c92a7463cd2bf592bb27ef95a91ee34cd2c1856545e38bb19b",
+  "network": {
+    "hidden": 128,
+    "message_passing_blocks": 10,
+    "particle_embedding": 16
+  },
+  "inputs": {
+    "node_features": {
+      "dtype": "float32",
+      "shape": [
+        "N",
+        27
+      ]
+    },
+    "particle_type": {
+      "dtype": "int64",
+      "shape": [
+        "N"
+      ]
+    },
+    "edge_features": {
+      "dtype": "float32",
+      "shape": [
+        "E",
+        4
+      ]
+    },
+    "edge_index": {
+      "dtype": "int64",
+      "shape": [
+        2,
+        "E"
+      ],
+      "order": [
+        "sender",
+        "receiver"
+      ]
+    }
+  },
+  "output": {
+    "name": "acceleration",
+    "dtype": "float32",
+    "shape": [
+      "N",
+      3
+    ],
+    "units": "Water-3D coordinate displacement per simulation-step squared"
+  },
+  "connectivity_radius": 0.035,
+  "routing": {
+    "STREAM": "2D shallow-water equation solver",
+    "POOL": "2D shallow-water equation solver",
+    "SPLASH": "PI-GNN ONNX inference",
+    "transition": "blend SWE and PI-GNN acceleration across the routing boundary",
+    "future_frame_features_forbidden": true
+  },
+  "coordinates": {
+    "training": "Y-up dataset coordinates",
+    "unreal": "Z-up centimeters",
+    "conversion": "(x,y,z)_data -> (100*x,100*z,100*y)_Unreal"
+  },
+  "runtime": {
+    "graph_nodes": "all active fluid and boundary particles",
+    "use_output_for": "SPLASH nodes only",
+    "discard_output_for": "STREAM and POOL; advance these with SWE"
+  }
+}

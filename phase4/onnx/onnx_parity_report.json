@@ -1,0 +1,14 @@
+{
+  "ours_full_graph": {
+    "provider": "CPUExecutionProvider",
+    "max_abs_error": 4.0745362639427185e-10,
+    "mean_abs_error": 5.147763812440864e-11,
+    "valid": true
+  },
+  "ours_roi_splash": {
+    "provider": "CPUExecutionProvider",
+    "max_abs_error": 4.0745362639427185e-10,
+    "mean_abs_error": 5.147763812440864e-11,
+    "valid": true
+  }
+}

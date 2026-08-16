@@ -5,11 +5,15 @@ venv/
 .claude/
 
 # Generated simulation output and local UI state
-fluid_routing/fluid_routing_log.csv
-fluid_routing/fluid_routing_summary.json
-fluid_routing/imgui.ini
+phase1/fluid_routing_log.csv
+phase1/fluid_routing_summary.json
+phase1/imgui.ini
 phase2/outputs/
 phase2/outputs_*/
 phase2/datasets/
 .venv-gpu/
 phase2/checkpoints/
+phase3/datasets/
+phase3/results/
+phase3/checkpoints/
+phase3/benchmark_results.csv
