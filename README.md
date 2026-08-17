@@ -46,10 +46,12 @@ Water-knows-answer/
 │   └── solvers/               # stream, splash, pool 기초 솔버
 ├── phase2/
 │   ├── terrains/              # 다섯 종류 height map과 라우팅 마스크
-│   ├── shallow_water.py       # 2D 천해방정식
-│   ├── wcsph_teacher.py       # 고정밀 teacher 생성
+│   ├── shallow_water/         # 2D 천해방정식과 2D→3D emitter
+│   ├── teacher/               # WCSPH teacher와 trajectory writer
+│   ├── gnn/                   # Phase 2 PI-GNN 모델·손실·배칭
 │   ├── train_pi_gnn.py        # PI-GNN 학습
-│   └── compare_pi_gnn_3d.py   # teacher/GNN 3D 비교 GUI
+│   ├── compare_pi_gnn_3d.py   # teacher/GNN 3D 비교 GUI
+│   └── archive/               # 초기 debug·구형 뷰어
 ├── phase3/
 │   ├── data.py                # Water-3D 인덱싱과 통합 그래프 구성
 │   ├── models.py              # 공통 GNS/PI-GNN 구조
@@ -59,6 +61,9 @@ Water-knows-answer/
 │   ├── reporting.py           # CSV·그래프·보고서 생성
 │   ├── swe_baseline.py        # 실제 SWE-only 기준선
 │   ├── roi_validation.py      # SPLASH ROI 정확도 검증
+│   ├── continuous_terrain_runtime.py # 무한 수원 게임형 런타임
+│   ├── external_teacher/      # Palouse DEM·외부 DFSPH 검증 파이프라인
+│   ├── archive/               # 선택 실험·구형 유한 rollout
 │   ├── tests/                 # 회귀·물리·그래프 단위 테스트
 │   └── results_summary/       # Git에 보존하는 결과표와 그래프
 └── phase4/
@@ -89,6 +94,23 @@ Water-knows-answer/
 # Phase 3 단위 테스트
 & .\.venv-gpu\Scripts\python.exe -m unittest discover -s phase3\tests -v
 
+# 최적화 Ours의 32-step teacher/ROI 3D GUI (학습 curriculum 범위)
+& .\.venv-gpu\Scripts\python.exe -m phase3.view_optimized_ours `
+    --data-root E:\WaterKnowsAnswer_Phase3 --group violent --steps 32
+
+# quiet/complex/violent 중 장면을 고를 수 있으며 최초 실행은 Water-3D와
+# ours/best.pt로 검증 조건 G와 동일한 rollout 캐시를 만든 뒤 GUI를 연다.
+# 100-step은 학습 범위 밖의 장기 안정성 stress test이므로 --steps 100으로 별도 실행한다.
+
+# 게임 런타임형 무한 수원: Height Map → SWE → 3D SPLASH ROI PI-GNN → SWE 복귀/입자 재사용
+& .\.venv-gpu\Scripts\python.exe -m phase3.continuous_terrain_runtime `
+    --data-root E:\WaterKnowsAnswer_Phase3 `
+    --terrain phase2\terrains\natural_waterfall
+
+# 위 연속 지형 런타임과 동일한 정규화/단위의 Unreal NNE용 ROI ONNX
+& .\.venv-gpu\Scripts\python.exe -m phase4.export_terrain_runtime_onnx `
+    --data-root E:\WaterKnowsAnswer_Phase3 --output phase4\onnx
+
 # Unreal용 전체 그래프/ROI ONNX 재생성 및 parity 검사
 & .\.venv-gpu\Scripts\python.exe -m phase4.export_onnx `
     --data-root E:\WaterKnowsAnswer_Phase3 --output phase4\onnx
@@ -109,9 +131,11 @@ Water-knows-answer/
 |Simple 3D|중력·저항·반발만 사용|신경망 없는 3D 기준선|
 |Optimized Ours|SPLASH ROI만 그래프 생성|최종 런타임 방식|
 
-일반 조건인 5,000입자·SPLASH 5%에서 기존 Ours는 평균 104.0 FPS,
-Optimized Ours는 206.8 FPS를 기록했다. 32-step 복합 장면의 위치 RMSE는
-각각 0.01865와 0.01867로 거의 동일했다. 전체 수치와 95% 신뢰구간은
+동일 코드로 다시 측정한 5,000입자·SPLASH 5% 조건에서 기존 Ours는
+평균 183.67 FPS, Optimized Ours는 394.49 FPS를 기록했다. Optimized Ours는
+SPLASH 5–50% 구간에서 학습 기반 조건 중 가장 빠르고 p95 60 FPS를 통과했다.
+100% SPLASH에서는 통과하지 못하므로 제안 범위를 국소 ROI 조건으로 한정한다.
+전체 수치와 95% 신뢰구간은
 [`phase3/results_summary`](phase3/results_summary)에서 확인한다.
 
 ## Unreal 전달 파일

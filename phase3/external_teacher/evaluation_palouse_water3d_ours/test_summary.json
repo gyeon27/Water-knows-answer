@@ -1,0 +1,42 @@
+{
+  "protocol": "Water-3D-trained optimized Ours zero-shot on Palouse Falls external DFSPH; 1-step teacher-forced",
+  "coordinate_adapter": {
+    "uniform_scale_per_m": 0.037730888642856696,
+    "offset": [
+      0.7286495566368103,
+      0.35632872581481934,
+      0.04888525605201721
+    ],
+    "source_bounds_m": [
+      [
+        -10.487736701965332,
+        -1.632282018661499
+      ],
+      [
+        0.06548617035150528,
+        7.550092697143555
+      ],
+      [
+        2.6798934936523438,
+        21.232332229614258
+      ]
+    ]
+  },
+  "frames": 300,
+  "splash_values": 12371,
+  "rejected_particle_reuse_transitions": 283,
+  "water3d_ours_position_rmse_m": 0.027804438024759293,
+  "water3d_ours_velocity_rmse_mps": 0.8341331481933594,
+  "analytic_baseline_position_rmse_m": 0.02729811519384384,
+  "analytic_baseline_velocity_rmse_mps": 0.8189433813095093,
+  "checkpoint": "E:\\WaterKnowsAnswer_Phase3\\checkpoints\\ours\\best.pt",
+  "teacher": "D:\\고가연\\과학고\\2026 2학년\\2026 학교활동\\과제연구\\GNN\\phase3\\external_teacher\\datasets\\external_dfSPH_palouse_falls_001.npz",
+  "runtime_confidence_blend": {
+    "calibration_frames": 150,
+    "held_out_test_frames": 150,
+    "alpha": 0.4010018813825451,
+    "test_baseline_position_rmse_m": 0.026504239067435265,
+    "test_raw_model_position_rmse_m": 0.026787111535668373,
+    "test_optimized_ours_position_rmse_m": 0.0257752425968647
+  }
+}

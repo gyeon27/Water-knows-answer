@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
+import time
 import tkinter as tk
 from tkinter import ttk
 
@@ -34,13 +35,15 @@ class Comparison:
 
 
 class Panel:
-    LIMIT = 700
+    # Tk Canvas creates one item per particle.  Keeping this below 500 avoids
+    # UI stalls; temporal frame skipping preserves the apparent flow speed.
+    LIMIT = 450
 
     def __init__(self, canvas, data: Comparison, camera: Camera):
         self.canvas, self.data, self.camera = canvas, data, camera
         self.center = np.array([0, (data.terrain.height.min() + data.terrain.height.max()) * 0.5, data.terrain.length_m * 0.54])
         rows, cols = data.terrain.height.shape
-        stride = max(1, max(rows, cols) // 25)
+        stride = max(1, max(rows, cols) // 20)
         rr, cc = np.arange(0, rows, stride), np.arange(0, cols, stride)
         rr, cc = np.unique(np.append(rr, rows - 1)), np.unique(np.append(cc, cols - 1))
         xx, zz = np.meshgrid(cc * data.terrain.dx - data.terrain.width_m * 0.5, rr * data.terrain.dz)
@@ -103,6 +106,8 @@ class Panel:
 class App:
     def __init__(self, root, data):
         self.root, self.data, self.frame, self.playing = root, data, 0, True
+        self.last_tick = time.perf_counter()
+        self.simulation_time = 0.0
         self.camera, self.last_mouse = Camera(), None
         root.title("WCSPH Teacher ↔ PI-GNN 3D Comparison")
         root.geometry("1500x850")
@@ -110,6 +115,10 @@ class App:
         self.button = ttk.Button(bar, text="일시정지", command=self.toggle); self.button.pack(side="left")
         self.mode = tk.StringVar(value="자율 rollout")
         ttk.Combobox(bar, textvariable=self.mode, state="readonly", values=("자율 rollout", "1-step"), width=14).pack(side="left", padx=7)
+        self.speed = tk.StringVar(value="2x")
+        ttk.Label(bar, text="재생 속도").pack(side="left", padx=(8, 2))
+        ttk.Combobox(bar, textvariable=self.speed, state="readonly",
+                     values=("0.5x", "1x", "2x", "4x"), width=5).pack(side="left")
         self.overlay, self.heatmap = tk.BooleanVar(), tk.BooleanVar(value=True)
         ttk.Checkbutton(bar, text="오버레이", variable=self.overlay, command=self.draw).pack(side="left")
         ttk.Checkbutton(bar, text="오차 heatmap", variable=self.heatmap, command=self.draw).pack(side="left")
@@ -147,11 +156,20 @@ class App:
         overlay = (self.data.teacher_p[f], self.data.teacher_a[f]) if self.overlay.get() else None
         self.panels[1].draw(f, predicted_p[f], predicted_a[f], error[f], heatmap=self.heatmap.get(), overlay=overlay, full=full)
         m = self.data.metrics[f]
-        self.label.configure(text=f"{f+1}/{self.data.teacher_p.shape[0]} · RMSE {m[0]:.3f}m · 침투 {m[1]*100:.2f}% · 밀도 {m[2]:.3f} · 운동량 {m[3]:.3f} · 에너지+ {m[4]:.3f}")
+        self.label.configure(text=f"{f+1}/{self.data.teacher_p.shape[0]} · t={f*self.data.dt:.2f}s · RMSE {m[0]:.3f}m · 침투 {m[1]*100:.2f}% · 밀도 {m[2]:.3f} · 운동량 {m[3]:.3f} · 에너지+ {m[4]:.3f}")
     def tick(self):
+        now = time.perf_counter()
+        elapsed = min(now - self.last_tick, 0.25)
+        self.last_tick = now
         if self.playing:
-            self.frame = (self.frame + 1) % self.data.teacher_p.shape[0]; self.frame_var.set(self.frame); self.draw()
-        self.root.after(max(15, int(self.data.dt * 1000)), self.tick)
+            rate = float(self.speed.get().removesuffix("x"))
+            self.simulation_time += elapsed * rate
+            advance = int(self.simulation_time / max(self.data.dt, 1e-6))
+            if advance:
+                self.simulation_time -= advance * self.data.dt
+                self.frame = (self.frame + advance) % self.data.teacher_p.shape[0]
+                self.frame_var.set(self.frame); self.draw()
+        self.root.after(8, self.tick)
 
 
 def main():

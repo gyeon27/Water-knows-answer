@@ -16,7 +16,7 @@ from .swe_baseline import ProjectedSWESolver
 
 
 STAGES = ("graph_features", "routing", "stream", "swe", "gnn", "blending", "total")
-CONDITIONS = ("A", "B", "C", "D", "E", "F")
+CONDITIONS = ("A", "B", "C", "D", "E", "F", "G")
 
 
 def _cpu_ms(function):
@@ -113,7 +113,7 @@ def run_benchmark(root: Path, cfg: Phase3Config, smoke: bool = False, output_nam
                                 stream.flush()
                             continue
                         _, timings["routing"] = _cpu_ms(lambda: ((np.linalg.norm(local_velocity, axis=1) > 0.05) & (local_position[:, 1] < 0.2)).astype(np.uint8))
-                        analytic_mask = np.ones(count, bool) if condition in ("A", "F") else (state != 1 if condition == "D" else state == 1 if condition == "C" else np.zeros(count, bool))
+                        analytic_mask = np.ones(count, bool) if condition in ("A", "F") else (state != 1 if condition in ("D", "G") else state == 1 if condition == "C" else np.zeros(count, bool))
                         _, timings["stream"] = _cpu_ms(lambda: local_velocity.__setitem__(analytic_mask & (state == 0), local_velocity[analytic_mask & (state == 0)] * 0.998 + np.array((0, -0.002, 0), np.float32)))
                         swe_mask = np.ones(count, bool) if condition == "A" else (state == 1 if condition == "C" else analytic_mask & (state == 2))
                         _, timings["swe"] = _cpu_ms(lambda: local_velocity.__setitem__(swe_mask, local_velocity[swe_mask] * np.array((0.995, 0.0, 0.995), np.float32)))
@@ -122,6 +122,12 @@ def run_benchmark(root: Path, cfg: Phase3Config, smoke: bool = False, output_nam
                         node[:, 21 + np.minimum(state, 2)] = 1.0
                         types = np.zeros(count, np.int64)
                         selected = np.zeros(count, bool) if condition in ("A", "F") else np.ones(count, bool) if condition in ("B", "E") else state != 1 if condition == "C" else state == 1
+                        # Optimized Ours refreshes the learned SPLASH correction
+                        # every second physics frame and reuses it in between.
+                        # Therefore both graph construction and CUDA inference
+                        # are skipped on held frames, matching the game runtime.
+                        if condition == "G" and frame % 2:
+                            selected = np.zeros(count, bool)
                         # Route first, then construct only the active solver's
                         # graph. The previous implementation built a graph for
                         # every particle and discarded 95% of it in the common

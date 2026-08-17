@@ -1,0 +1,18 @@
+{
+  "protocol": "held-out chronological 1-step teacher-forced; GNN residual applied to SPLASH only",
+  "frames": 20,
+  "splash_values": 186,
+  "rejected_particle_reuse_transitions": 1,
+  "position_rmse_m": 0.028746912227907893,
+  "velocity_rmse_mps": 1.3664457397391603,
+  "mean_physics_losses": {
+    "loss_total": 10.069930562004448,
+    "loss_supervised": 10.065512090548873,
+    "loss_penetration": 0.038477912358939645,
+    "loss_momentum": 0.0004408517779665999,
+    "loss_density": 0.0,
+    "loss_energy": 0.010964236373547464
+  },
+  "checkpoint": "D:\\고가연\\과학고\\2026 2학년\\2026 학교활동\\과제연구\\GNN\\phase3\\external_teacher\\checkpoints\\pi_gnn_ours\\best.pt",
+  "teacher": "D:\\고가연\\과학고\\2026 2학년\\2026 학교활동\\과제연구\\GNN\\phase3\\external_teacher\\datasets\\external_dfSPH_palouse_falls_001.npz"
+}

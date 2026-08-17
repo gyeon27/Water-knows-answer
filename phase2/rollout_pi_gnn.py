@@ -9,8 +9,12 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from gnn import ResidualGNS, runtime_graph, terrain_sample
-from shallow_water import TerrainData
+try:
+    from .gnn import ResidualGNS, runtime_graph, terrain_sample
+    from .shallow_water import TerrainData
+except ImportError:  # direct script execution
+    from gnn import ResidualGNS, runtime_graph, terrain_sample
+    from shallow_water import TerrainData
 
 
 def load_model(path: Path, device):

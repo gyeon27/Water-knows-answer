@@ -12,8 +12,26 @@ phase2/outputs/
 phase2/outputs_*/
 phase2/datasets/
 .venv-gpu/
+.venv-*/
+node_modules/
+imgui.ini
+outputs/
+team_share/
 phase2/checkpoints/
 phase3/datasets/
 phase3/results/
 phase3/checkpoints/
 phase3/benchmark_results.csv
+phase3/gui_cache/
+
+# Rebuildable external-teacher assets and large transfer artifacts
+phase3/external_teacher/checkpoints/
+phase3/external_teacher/datasets/
+phase3/external_teacher/generated/
+phase3/external_teacher/palouse_generated/
+phase3/external_teacher/palouse_long/
+phase3/external_teacher/palouse_7condition_npz/
+phase3/external_teacher/palouse_7condition_npz.zip
+phase3/external_teacher/smoke_output/
+phase3/external_teacher/source/*.tif
+phase3/external_teacher/evaluation*/*.npz

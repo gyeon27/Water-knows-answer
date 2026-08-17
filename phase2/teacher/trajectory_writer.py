@@ -11,7 +11,7 @@ from pathlib import Path
 
 import numpy as np
 
-try:  # Package execution: python -m phase2.generate_debug_teachers
+try:  # Package execution: python -m phase2.archive.prototypes.generate_debug_teachers
     from phase2.shallow_water import FluxParticleEmitter, ShallowWaterSolver, TerrainData
 except ModuleNotFoundError:  # Direct execution from the repository root.
     from shallow_water import FluxParticleEmitter, ShallowWaterSolver, TerrainData

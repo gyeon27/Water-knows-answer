@@ -1,0 +1,96 @@
+{
+  "format": "ONNX",
+  "opset": 18,
+  "model": "ours_terrain_roi_splash.onnx",
+  "sha256": "d5fbe2e7e88288c2cf4ef1df7b6afd043d45f6934467a8f53e2699cbe76885a4",
+  "checkpoint": "wcsph_zero_shot/best.pt",
+  "purpose": "continuous arbitrary-height-map waterfall runtime; SPLASH ROI inference only",
+  "inputs": {
+    "node_features": {
+      "dtype": "float32",
+      "shape": [
+        "N",
+        27
+      ]
+    },
+    "particle_type": {
+      "dtype": "int64",
+      "shape": [
+        "N"
+      ]
+    },
+    "edge_features": {
+      "dtype": "float32",
+      "shape": [
+        "E",
+        4
+      ]
+    },
+    "edge_index": {
+      "dtype": "int64",
+      "shape": [
+        2,
+        "E"
+      ]
+    }
+  },
+  "output": {
+    "name": "acceleration",
+    "shape": [
+      "N",
+      3
+    ],
+    "units": "meter displacement per 30-Hz step squared"
+  },
+  "normalization": {
+    "vel_mean": [
+      -0.033950597047805786,
+      -0.1120709627866745,
+      0.35187041759490967
+    ],
+    "vel_std": [
+      0.14913488924503326,
+      0.10848940908908844,
+      0.22572611272335052
+    ],
+    "acc_mean": [
+      0.0002720761112868786,
+      -0.004138067830353975,
+      -0.0015615838347002864
+    ],
+    "acc_std": [
+      0.011472532525658607,
+      0.03774039074778557,
+      0.01041714008897543
+    ]
+  },
+  "connectivity_radius_m": 0.32,
+  "runtime_order": [
+    "inject source volume into SWE",
+    "advance SWE",
+    "extract cliff flux",
+    "emit/reuse 3-D slots",
+    "route present-state SPLASH ROI",
+    "build ROI radius graph",
+    "run this ONNX",
+    "scatter learned acceleration",
+    "terrain collision",
+    "absorb settled particles into SWE",
+    "recycle exited slots"
+  ],
+  "not_in_onnx": [
+    "stateful SWE grid",
+    "source injection",
+    "dynamic routing",
+    "graph construction",
+    "2D/3D mass transfer",
+    "particle pool/recycling",
+    "terrain collision"
+  ],
+  "unreal_contract": {
+    "SWE": "C++/Compute Shader",
+    "routing_and_particle_pool": "Niagara/C++",
+    "inference": "NNE ONNX",
+    "coordinate_conversion": "Y-up meters -> Unreal Z-up centimeters"
+  }
+}

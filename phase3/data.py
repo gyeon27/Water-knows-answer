@@ -269,7 +269,7 @@ def _routing_state(velocity: np.ndarray, acceleration: np.ndarray, position: np.
     return state
 
 
-def graph_from_gns(record: dict, metadata: dict, frame: int, cfg: Phase3Config, objective: str = "ours") -> UnifiedGraph:
+def graph_from_gns(record: dict, metadata: dict, frame: int, cfg: Phase3Config, objective: str = "ours", build_edges: bool = True) -> UnifiedGraph:
     position = np.asarray(record["position"], np.float32)
     types = np.asarray(record["particle_type"], np.int64)
     bounds = np.asarray(metadata["bounds"], np.float32)
@@ -294,7 +294,11 @@ def graph_from_gns(record: dict, metadata: dict, frame: int, cfg: Phase3Config, 
         state_onehot[:, value] = state == value
     gravity = np.tile((0.0, -1.0, 0.0), (current.shape[0], 1)).astype(np.float32)
     node = np.concatenate((velocity_features, distances, state_onehot, gravity), axis=1).astype(np.float32)
-    edges, edge_features = radius_graph(current, radius, cfg.max_neighbors)
+    if build_edges:
+        edges, edge_features = radius_graph(current, radius, cfg.max_neighbors)
+    else:
+        edges = np.empty((2, 0), np.int64)
+        edge_features = np.empty((0, EDGE_SIZE), np.float32)
     normalized_acc = (acceleration - acc_mean) / np.maximum(acc_std, 1e-8)
     if objective == "gns":
         target = normalized_acc
@@ -316,17 +320,32 @@ def graph_from_gns(record: dict, metadata: dict, frame: int, cfg: Phase3Config, 
     return UnifiedGraph(node, types, edges, edge_features, target.astype(np.float32), mask, current, current_v, state, str(record.get("key", 0)))
 
 
-def graph_from_wcsph(path: Path, terrain_root: Path, frame: int, cfg: Phase3Config) -> UnifiedGraph:
+def graph_from_wcsph(
+    path: Path,
+    terrain_root: Path,
+    frame: int,
+    cfg: Phase3Config,
+    *,
+    positions_override: np.ndarray | None = None,
+    velocities_override: np.ndarray | None = None,
+    active_override: np.ndarray | None = None,
+    splash_override: np.ndarray | None = None,
+    build_edges: bool = True,
+) -> UnifiedGraph:
     """Map a Phase-2 WCSPH frame to the same 27/4 public-data feature space."""
     from phase2.shallow_water import TerrainData
 
     with np.load(path, allow_pickle=False) as data:
-        positions_all = data["positions"].astype(np.float32)
-        velocities_all = data["velocities"].astype(np.float32)
-        active_all = data["active_mask"].astype(bool)
-        splash_all = data["splash_roi"].astype(bool)
+        teacher_positions = data["positions"].astype(np.float32)
+        teacher_velocities = data["velocities"].astype(np.float32)
+        teacher_active = data["active_mask"].astype(bool)
+        teacher_splash = data["splash_roi"].astype(bool)
         terrain_id = str(data["terrain_id"].item())
         dt = float(data["dt"])
+    positions_all = teacher_positions if positions_override is None else positions_override
+    velocities_all = teacher_velocities if velocities_override is None else velocities_override
+    active_all = teacher_active if active_override is None else active_override
+    splash_all = teacher_splash if splash_override is None else splash_override
     ids = np.flatnonzero(active_all[frame])
     if not ids.size:
         raise ValueError(f"no active WCSPH particles at frame {frame}")
@@ -334,11 +353,14 @@ def graph_from_wcsph(path: Path, terrain_root: Path, frame: int, cfg: Phase3Conf
     current = positions_all[frame, ids]
     current_v = velocities_all[frame, ids] * dt  # position change per model step
     history = velocities_all[frame - 4 : frame + 1, ids] * dt
-    all_active_v = velocities_all[active_all] * dt
+    # Fixed trajectory-domain statistics are used even during autonomous
+    # rollout.  Re-estimating them from predictions would create feedback and
+    # make identical terrain inputs depend on future rollout failure.
+    all_active_v = teacher_velocities[teacher_active] * dt
     vel_mean = all_active_v.mean(0)
     vel_std = np.maximum(all_active_v.std(0), 1e-5)
-    acceleration_values = np.diff(velocities_all * dt, axis=0)
-    acc_mask = active_all[1:] & active_all[:-1]
+    acceleration_values = np.diff(teacher_velocities * dt, axis=0)
+    acc_mask = teacher_active[1:] & teacher_active[:-1]
     active_acc = acceleration_values[acc_mask]
     acc_mean = active_acc.mean(0) if active_acc.size else np.array((0, -9.81 * dt * dt, 0), np.float32)
     acc_std = np.maximum(active_acc.std(0), 1e-5) if active_acc.size else np.ones(3, np.float32)
@@ -369,8 +391,12 @@ def graph_from_wcsph(path: Path, terrain_root: Path, frame: int, cfg: Phase3Conf
     combined_position = np.concatenate((current, boundary))
     combined_node = np.concatenate((node, boundary_node))
     types = np.concatenate((np.zeros(ids.size, np.int64), np.full(boundary_count, KINEMATIC_ID, np.int64)))
-    edges, edge_features = radius_graph(combined_position, radius, cfg.max_neighbors)
-    next_v = velocities_all[frame + 1, ids] * dt
+    if build_edges:
+        edges, edge_features = radius_graph(combined_position, radius, cfg.max_neighbors)
+    else:
+        edges = np.empty((2, 0), np.int64)
+        edge_features = np.empty((0, EDGE_SIZE), np.float32)
+    next_v = teacher_velocities[frame + 1, ids] * dt
     target_fluid = ((next_v - current_v) - acc_mean) / acc_std
     target = np.concatenate((target_fluid, np.zeros((boundary_count, 3), np.float32)))
     mask = np.concatenate((splash, np.zeros(boundary_count, bool)))

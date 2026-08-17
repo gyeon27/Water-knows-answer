@@ -1,0 +1,17 @@
+{
+  "protocol": "held-out chronological 1-step teacher-forced; GNN residual applied to SPLASH only",
+  "frames": 36,
+  "splash_values": 2283,
+  "position_rmse_m": 0.01259558485081033,
+  "velocity_rmse_mps": 0.5626545351856201,
+  "mean_physics_losses": {
+    "loss_total": 0.7401389254050122,
+    "loss_supervised": 0.7395762743221389,
+    "loss_penetration": 0.0,
+    "loss_momentum": 2.3236240570175446e-06,
+    "loss_density": 0.007319655152223782,
+    "loss_energy": 0.0039310218724292805
+  },
+  "checkpoint": "D:\\고가연\\과학고\\2026 2학년\\2026 학교활동\\과제연구\\GNN\\phase3\\external_teacher\\checkpoints\\pi_gnn_ours\\best.pt",
+  "teacher": "D:\\고가연\\과학고\\2026 2학년\\2026 학교활동\\과제연구\\GNN\\phase3\\external_teacher\\datasets\\external_dfSPH_natural_cliff_001.npz"
+}
